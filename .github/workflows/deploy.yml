@@ -1,0 +1,56 @@
+name: Publicar site Foncestas
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar arquivos do repositório
+        uses: actions/checkout@v6
+
+      - name: Preparar arquivos do site
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          unzip -q foncestas-site-github-pages.zip -d _site
+          if [ -f "_site/index.html" ]; then
+            echo "Site encontrado na raiz do ZIP."
+          else
+            INDEX=$(find _site -type f -name index.html | head -n 1)
+            if [ -n "$INDEX" ]; then
+              DIR=$(dirname "$INDEX")
+              cp -R "$DIR"/. _site/
+            else
+              echo "index.html não encontrado no ZIP."
+              exit 1
+            fi
+          fi
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Enviar arquivos para o Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./_site
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
